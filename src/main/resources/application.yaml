@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: dynamic-csv-batch-processor
+  main:
+    web-application-type: none
+  datasource:
+    url: jdbc:h2:file:./data/replacements;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 6
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+
+app:
+  launch: true
+  work-directory: ./work
+  chunk-size: 100
+  max-columns: 128
+  max-field-chars: 8192
+  max-record-chars: 65536
+  max-old-ids: 100
+  max-mappings: 16
+  max-expanded-pairs-per-chunk: 10000
+  statement-timeout-seconds: 30
+  max-database-attempts: 3
+  target-table: business_record
+  properties:
+    customerId:
+      column: customer_id
+      max-length: 64
+    departmentId:
+      column: department_id
+      max-length: 32

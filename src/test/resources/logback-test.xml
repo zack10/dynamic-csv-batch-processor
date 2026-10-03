@@ -1,0 +1,7 @@
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder><pattern>%level %logger{32} - %msg%n</pattern></encoder>
+  </appender>
+  <logger name="org.springframework.batch" level="OFF"/>
+  <root level="WARN"><appender-ref ref="CONSOLE"/></root>
+</configuration>

@@ -1,0 +1,21 @@
+version: 1
+name: split-list
+input:
+  encoding: UTF-8
+  delimiter: ","
+  quote: '"'
+  escapeMode: doubled-quote
+  header: true
+  ignoreEmptyRecords: true
+mappings:
+  - name: replace-customer
+    oldIdValues:
+      source: {column: old_codes}
+      split: {delimiter: "|", mode: literal}
+      transforms: [trim]
+      dropEmpty: true
+      distinct: true
+    newIdValue:
+      source: {column: replacement}
+    metadataToUpdate:
+      source: {constant: customerId}

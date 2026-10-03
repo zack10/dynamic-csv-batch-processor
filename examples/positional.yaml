@@ -1,0 +1,19 @@
+version: 1
+name: positional
+input:
+  encoding: UTF-8
+  delimiter: ","
+  quote: '"'
+  escapeMode: doubled-quote
+  header: false
+  ignoreEmptyRecords: true
+mappings:
+  - name: replace-customer
+    oldIdValues:
+      source: {indexes: [0, 1]}
+      dropEmpty: true
+      distinct: true
+    newIdValue:
+      source: {index: 2}
+    metadataToUpdate:
+      source: {constant: customerId}

@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: replacements
+      POSTGRES_USER: replacements
+      POSTGRES_PASSWORD: replacements
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U replacements"]
+      interval: 5s
+      retries: 10
+volumes:
+  postgres-data:

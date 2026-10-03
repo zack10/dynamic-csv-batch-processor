@@ -1,0 +1,8 @@
+/target/
+/work/
+/data/
+/.idea/
+*.iml
+*.log
+.env
+.delta/

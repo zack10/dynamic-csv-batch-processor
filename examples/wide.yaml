@@ -1,0 +1,24 @@
+version: 1
+name: wide
+input:
+  encoding: UTF-8
+  delimiter: ","
+  quote: '"'
+  escapeMode: doubled-quote
+  header: true
+  ignoreEmptyRecords: true
+mappings:
+  - name: customer
+    oldIdValues:
+      source: { column: old_customer }
+    newIdValue:
+      source: { column: new_customer }
+    metadataToUpdate:
+      source: { constant: customerId }
+  - name: department
+    oldIdValues:
+      source: { column: old_department }
+    newIdValue:
+      source: { column: new_department }
+    metadataToUpdate:
+      source: { constant: departmentId }

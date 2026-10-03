@@ -1,0 +1,29 @@
+version: 1
+name: team-a-id-replacements
+input:
+  encoding: UTF-8
+  delimiter: ";"
+  quote: '"'
+  escapeMode: doubled-quote
+  header: true
+  headerMatching: exact
+  ignoreEmptyRecords: true
+mappings:
+  - name: replace-selected-property
+    oldIdValues:
+      source:
+        columns: [previous_primary, previous_secondary]
+      transforms: [trim]
+      dropEmpty: true
+      distinct: true
+    newIdValue:
+      source:
+        column: replacement
+      transforms: [trim]
+    metadataToUpdate:
+      source:
+        column: attribute
+      valueMap:
+        CUSTOMER: customerId
+        DEPARTMENT: departmentId
+      onUnmapped: error
