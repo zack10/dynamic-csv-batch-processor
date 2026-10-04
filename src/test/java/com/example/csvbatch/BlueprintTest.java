@@ -35,6 +35,7 @@ class BlueprintTest {
             reader.open(new ExecutionContext());
             try {
                 var first = reader.read();
+                assert first != null;
                 assertThat(first.getFirst().newIdValue()).isEqualTo("900");
                 assertThat(first.getFirst().oldIdValues()).contains("101");
                 assertThat(first.getFirst().metadataToUpdate()).isEqualTo("customerId");
