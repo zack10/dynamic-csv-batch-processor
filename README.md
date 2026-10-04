@@ -378,9 +378,9 @@ Supported transformations: `trim` (Java Unicode-aware `strip`), `uppercase`, and
 
 ### Other layouts
 
+- [examples/expected-team-a.csv](examples/expected-team-a.csv): the expected `apply` output for the team-a example after updates.
 - [examples/positional.yaml](examples/positional.yaml) uses no header and selects indexes `[0, 1]` and `2`.
-- [examples/wide.yaml](examples/wide.yaml) contains two mappings, generating one customer command and one department command from each input row.
-- A file containing one old ID per row generates singleton old-value arrays. It is **not grouped in memory** by destination.
+- [examples/wide.yaml](examples/wide.yaml) contains two mappings, generating one customer command and one department command from each input row. A file containing one old ID per row generates singleton old-value arrays. It is **not grouped in memory** by destination.
 
 Each mapping emits exactly one command per source record. There are no conditional mappings or optional-row skips yet; every emitted command must be valid. Extra columns are accepted, but a header-bearing file must have the same column count in every record. Positional input must contain every referenced index; unreferenced extra columns are accepted within configured limits.
 
@@ -478,7 +478,7 @@ Business updates, database counters, staging writes, and corresponding checkpoin
 
 Re-run the same command and submission ID to restart a FAILED or STOPPED execution. Completed steps are skipped; failed normalization/apply resumes from its last committed logical record. Readers reopen the immutable file and parse/discard the committed prefix. This is bounded-memory but O(records already processed); parser-aware checkpoint indexes are a future optimization.
 
-The submission ID is the sole identifying job parameter. The application separately binds it to input/YAML SHA-256 hashes, mode, trusted registry/table, work directory, and engine contract version. Changing any of those requires a new submission ID. Files are snapshotted on first submission and checked on restart. Chunk sizing can be lowered when retrying an expansion-limit failure. A new ID creates new work; it is not a restart and can repeat database updates.
+The `submissionId` is generated as a lowercase random token that matches `[A-Za-z0-9][A-Za-z0-9_-]{0,79}` and persists for the same run when the job is restarted. The application separately binds it to input/YAML SHA-256 hashes, mode, trusted registry/table, work directory, and engine contract version. Changing any of those requires a new submission ID. Files are snapshotted on first submission and checked on restart. Chunk sizing can be lowered when retrying an expansion-limit failure. A new ID creates new work; it is not a restart and can repeat database updates.
 
 If the JVM is forcibly killed, the repository may still say STARTED. Once the old process is confirmed dead, use the same command with `--recover=true`; the service obtains the global database lock and uses Batch 6's recovery API before restarting. Normal failures do not require recovery. Never modify checkpoint tables manually as a routine restart mechanism.
 
@@ -490,7 +490,8 @@ Transient database exceptions during apply receive bounded retries with exponent
 
 All submissions through `SubmissionService` obtain `SELECT ... FOR UPDATE NOWAIT` on one technical lock row. A dedicated connection holds this lock for the whole synchronous job; chunk transactions use other connections. Concurrent app submissions fail lock acquisition instead of interleaving. The lock is released in `finally` and by the database when the connection dies. Provision at least several connections (default pool size 6).
 
-This lock does **not** block unrelated applications that write the business table. Coordinate a maintenance window or another agreed business-write exclusion mechanism. Do not configure an asynchronous job operator/executor, launch the job directly around the service, or configure an idle-transaction timeout that expires the lock-holding connection during a run. The lock is an application coordination mechanism, not protection against arbitrary infrastructure/network failure.
+- **Throughput** — This serializes all submissions: throughput is one run at a time regardless of pool size or core count. Batch scheduled submissions, or shard by deployment, if that ceiling is too low.
+- **Retention and growth** — `staged_command`, `staged_pair`, and `work/` grow without bound; manual cleanup must account for pending restarts; no retention policy exists in version 1. Move this out of roadmap item 5 so operators reading the transactions section see it. (Place as a new subsection after Concurrency contract.)
 
 ## PostgreSQL
 
@@ -519,6 +520,7 @@ The JPA entities are immutable reporting mappings of the existing technical tabl
 - Executed SQL statements, known affected-row events, zero matches and unknown driver counts.
 - Latest persisted execution/checkpoint information per step.
 - Job failure exceptions.
+- `notes` (if provided): free-form notes recorded for the run.
 
 Zero matches are permitted and reported. They can mean no original match, a redundant mapping, or data already changed outside the job. JDBC `SUCCESS_NO_INFO` is recorded as an unknown count instead of fabricated success totals. Database counters are transactional and survive restart; step read/write counters describe the latest step execution, not necessarily the whole submission.
 
@@ -542,7 +544,7 @@ mvn "-DlargeFileTest=true" "-DargLine=-Xmx256m" verify
 
 This test generates **1,153,437,071 bytes across 143,794 records** with an 8,000-character unused field, then runs snapshotting, streaming normalization, database staging, whole-file validation, export, checksum verification and reporting in validate-only mode. It checks command counts and absence of business writes. This exercises large byte volume; it is not a benchmark of tens of millions of short mappings or high-fan-out updates. It uses a file-backed H2 database with an 8 MiB database cache. Test files remain under `target/` until `mvn clean`; allow several GB of free space.
 
-Local verification after the JPA reporting refactor (2026-09-27, Java 25): **17 tests passed**, including this >1 GiB test with a 256 MiB maximum heap; 11 opt-in PostgreSQL tests were skipped. Repository tests cover empty aggregates, submission/property/destination isolation, duplicate/no-op counts, and the explicit transaction-manager selection. Restart tests also check the resulting JPA-backed report counters. The executable-jar demo produced the expected five affected-column events. These are measured development results, not a production throughput guarantee or a PostgreSQL qualification claim.
+Local verification after the JPA reporting refactor (2026-09-27, Java 25): the default suite runs 21 tests (4 `AppPropertiesTest`, 5 `BlueprintTest`, 12 `JobIntegrationTest`); `LargeFileTest` is opt-in and 12 more run under `RUN_POSTGRES_TESTS=true`. The >1 GiB `LargeFileTest` runs nightly (and on demand) via CI. These are measured development results, not a production throughput guarantee or a PostgreSQL qualification claim.
 
 An opt-in Testcontainers suite runs the same database contract against PostgreSQL:
 
@@ -729,7 +731,7 @@ All three reporting interfaces extend Spring Data's narrow `Repository` interfac
 
 **[BlueprintTest.java](src/test/java/com/example/csvbatch/BlueprintTest.java)** tests the language and parser in isolation: supported mappings, rejected instructions, BOM/quoted multiline input, leading zeros, checkpoint replay, malformed CSV, limits, and string-only JSON old-ID arrays.
 
-**[JobIntegrationTest.java](src/test/java/com/example/csvbatch/JobIntegrationTest.java)** exercises complete submissions against H2. It checks application results/artifacts, validate-only behavior, conflicts/chains, unchanged submission identity, late input failures, normalization/apply rollback and restart, artifact tampering, no-op/duplicate reporting, JPA aggregate isolation, empty results, and transaction-manager selection. These tests demonstrate how the collaborating classes behave together.
+**[JobIntegrationTest.java](src/test/java/com/example/csvbatch/JobIntegrationTest.java)** exercises complete submissions against H2. It checks application results/artifacts, validate-only behavior, conflicts/chains, unchanged submission identity, late input failures, normalization/apply rollback and restart, artifact tampering, no-op/duplicate reporting, JPA aggregate isolation, empty results, transaction-manager selection, and `submissionLockExcludesOtherConnectionsAndReleasesAfterFailure`. These tests demonstrate how the collaborating classes behave together.
 
 **[PostgresIntegrationTest.java](src/test/java/com/example/csvbatch/PostgresIntegrationTest.java)** inherits the integration contract and supplies a Testcontainers PostgreSQL database. It runs only when `RUN_POSTGRES_TESTS=true` and requires Docker.
 
