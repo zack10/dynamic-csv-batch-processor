@@ -561,9 +561,18 @@ mvn verify
 
 Docker must be running for that suite. CI enables it on a Linux runner with Java 25. Local default tests skip PostgreSQL explicitly; a passing H2 run alone is not proof of PostgreSQL behavior. Production-database performance qualification with representative records and a real process-kill recovery exercise should be run in the deployment environment; H2 tests do not substitute for them.
 
-## Packages and classes: a guided code walkthrough
+## Packages (key responsibilities)
 
-The package boundaries follow responsibilities: `blueprint` understands the mapping language, `normalization` reads source data and stages commands, `execution` validates/publishes/applies those commands, `batch` connects the lifecycle, and `persistence` provides transaction configuration, JDBC export reads, and JPA reporting reads. The job orchestrates these pieces; it does not contain all their logic.
+- `blueprint`: mapping language load/validation
+- `normalization`: CSV reading, checkpointing, staging command generation  
+- `execution`: validation, conflict/chain checks, apply/reporting
+- `batch`: job wiring and submission lifecycle
+- `persistence`: transaction config, JDBC/JPA reporting
+- `app`: configuration and entry point
+
+## Not in version 1
+
+Arbitrary scripts/SQL, cross-file joins, grouping/pivot, multiple business tables, tenant scopes, whole-file rollback, chain/swap semantics, distributed workers, automatic CSV dialect guessing. See the roadmap for planned additions.
 
 ### Application root: startup and trusted configuration
 
