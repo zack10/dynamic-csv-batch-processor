@@ -844,3 +844,7 @@ Version 1 intentionally omits arbitrary scripts/SQL, cross-file joins, grouping/
 - [univocity-parsers source and documentation](https://github.com/uniVocity/univocity-parsers)
 
 Batch 6 infrastructure APIs live under `org.springframework.batch.infrastructure.*`, and core job/step classes have their current package layout. Dependencies are managed by Boot's BOM; the application uses the Batch 6 chunk builder with an explicit database transaction manager.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
