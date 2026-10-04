@@ -48,13 +48,28 @@ class BlueprintTest {
     @Test
     void rejectsUnknownKeysDuplicateKeysAndInvalidSelectors() throws Exception {
         String yaml = Files.readString(Path.of("examples/split-list.yaml"));
-        for (String invalid : List.of(yaml + "typo: true\n", yaml + "version: 1\n",
+        var cases = List.of(
+                yaml + "typo: true\n",
+                yaml + "version: 1\n",
                 yaml.replace("{column: old_codes}", "{column: old_codes, index: 0}"),
-                yaml.replace("[trim]", "[executeSql]"), yaml.replace("customerId", "unapproved"),
-                yaml.replace("header: true", "header: false"))) {
-            Path path = temp.resolve("invalid.yaml");
-            Files.writeString(path, invalid);
-            assertThatThrownBy(() -> new BlueprintLoader(config(temp)).load(path)).isInstanceOf(RuntimeException.class);
+                yaml.replace("[trim]", "[executeSql]"),
+                yaml.replace("customerId", "unapproved"),
+                yaml.replace("header: true", "header: false"),
+                yaml.replace("      source: {constant: customerId}", "      source: {column: attribute}"),
+                yaml.replace("      source: {constant: customerId}", "      source: {index: 0}"),
+                yaml.replace("      source: {column: old_codes}", "      source: {index: 5000}"),
+                yaml.replace("name: replace-customer", "name: \"   \"")
+        );
+        for (int i = 0; i < cases.size(); i++) {
+            String s = cases.get(i);
+            Path path = temp.resolve("invalid" + i + ".yaml");
+            Files.writeString(path, s);
+            try {
+                new BlueprintLoader(config(temp)).load(path);
+                throw new AssertionError("Expected failure for case " + i);
+            } catch (RuntimeException e) {
+                // expected
+            }
         }
     }
 

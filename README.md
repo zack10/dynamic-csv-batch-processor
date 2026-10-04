@@ -370,11 +370,11 @@ This delimiter is independent of the CSV delimiter and is treated literally, not
 4. Drop empty strings if `dropEmpty: true`.
 5. Remove duplicates, preserving first occurrence, if `distinct: true`.
 6. Apply `valueMap` for the property selector, if configured.
-7. Validate IDs and the logical property.
+7. Validate IDs against the property's configured max length. The logical property is validated at blueprint load time.
 
 Supported transformations: `trim` (Java Unicode-aware `strip`), `uppercase`, and `lowercase` (both use `Locale.ROOT`). `dropEmpty` and `distinct` default to false when omitted and are allowed only on old-value lists. Trimming before dropping empties is explicit. A list empty after filtering is invalid.
 
-`valueMap` applies only to `metadataToUpdate` and requires `onUnmapped: error`. All destinations must be approved logical properties. A property can alternatively be a constant or come directly from an input column; direct values are still checked against the registry.
+`valueMap` applies only to `metadataToUpdate` and requires `onUnmapped: error`. All destinations must be approved logical properties. A property may instead be given as a `constant`. These two forms are exhaustive in version 1: a column-sourced property is rejected at load time. Keeping the property fixed per blueprint lets an unapproved property fail before any row processing.
 
 ### Other layouts
 
