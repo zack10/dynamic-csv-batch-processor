@@ -478,7 +478,7 @@ Business updates, database counters, staging writes, and corresponding checkpoin
 
 Re-run the same command and submission ID to restart a FAILED or STOPPED execution. Completed steps are skipped; failed normalization/apply resumes from its last committed logical record. Readers reopen the immutable file and parse/discard the committed prefix. This is bounded-memory but O(records already processed); parser-aware checkpoint indexes are a future optimization.
 
-The `submissionId` is generated as a lowercase random token that matches `[A-Za-z0-9][A-Za-z0-9_-]{0,79}` and persists for the same run when the job is restarted. The application separately binds it to input/YAML SHA-256 hashes, mode, trusted registry/table, work directory, and engine contract version. Changing any of those requires a new submission ID. Files are snapshotted on first submission and checked on restart. Chunk sizing can be lowered when retrying an expansion-limit failure. A new ID creates new work; it is not a restart and can repeat database updates.
+You supply the `--submissionId`; the application does not generate one. It must match `[A-Za-z0-9][A-Za-z0-9_-]{0,79}`, and reusing the same value restarts the run. The application separately binds it to input/YAML SHA-256 hashes, mode, trusted registry/table, work directory, and engine contract version. Changing any of those requires a new submission ID. Files are snapshotted on first submission and checked on restart. Chunk sizing can be lowered when retrying an expansion-limit failure. A new ID creates new work; it is not a restart and can repeat database updates.
 
 If the JVM is forcibly killed, the repository may still say STARTED. Once the old process is confirmed dead, use the same command with `--recover=true`; the service obtains the global database lock and uses Batch 6's recovery API before restarting. Normal failures do not require recovery. Never modify checkpoint tables manually as a routine restart mechanism.
 
@@ -490,8 +490,11 @@ Transient database exceptions during apply receive bounded retries with exponent
 
 All submissions through `SubmissionService` obtain `SELECT ... FOR UPDATE NOWAIT` on one technical lock row. A dedicated connection holds this lock for the whole synchronous job; chunk transactions use other connections. Concurrent app submissions fail lock acquisition instead of interleaving. The lock is released in `finally` and by the database when the connection dies. Provision at least several connections (default pool size 6).
 
-- **Throughput** — This serializes all submissions: throughput is one run at a time regardless of pool size or core count. Batch scheduled submissions, or shard by deployment, if that ceiling is too low.
-- **Retention and growth** — `staged_command`, `staged_pair`, and `work/` grow without bound; manual cleanup must account for pending restarts; no retention policy exists in version 1. Move this out of roadmap item 5 so operators reading the transactions section see it. (Place as a new subsection after Concurrency contract.)
+### Throughput and retention
+
+The application lock serializes all submissions: throughput is one run at a time regardless of pool size or core count. Batch scheduled submissions, or shard by deployment, if that ceiling is too low.
+
+`staged_command`, `staged_pair`, and the per-submission `work/` directory grow without bound; version 1 has no retention policy. Manual cleanup must leave restartable submissions (FAILED, STOPPED) intact, and must delete database staging rows before their work directory.
 
 ## PostgreSQL
 
@@ -526,7 +529,7 @@ Zero matches are permitted and reported. They can mean no original match, a redu
 
 Input failures report source record and mapping where available; parser syntax failures carry parser location information. Jobs fail on the first error instead of generating an unbounded in-memory error list. Very early submission errors (for example invalid YAML or an unavailable database) are logged and may have no report. A killed process cannot write its final report; restart supplies the final status.
 
-`validate-only` validates mappings and relationships and publishes canonical artifacts. It does **not** simulate every constraint, count target rows, or promise an exact preview of business changes. It still writes technical staging/repository data. Actuator is included for operational integration, but this CLI starts no HTTP server or metrics endpoint by default.
+`validate-only` validates mappings and relationships and publishes canonical artifacts. It does **not** simulate every constraint, count target rows, or promise an exact preview of business changes. It still writes technical staging/repository data. There is no HTTP server or metrics endpoint; operational integration reads `report.json` and the database.
 
 ## Tests and verification
 
