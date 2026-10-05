@@ -48,18 +48,18 @@ public final class BoundedCsv implements AutoCloseable {
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
         var input = new PushbackReader(new InputStreamReader(Files.newInputStream(path), decoder), 1);
-        int first = input.read();
-        if (first != -1 && first != '\uFEFF') {
-            input.unread(first);
-        }
-        reader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0), limits.maxRecordChars());
         maxRecordChars = limits.maxRecordChars();
-        parser = new CsvParser(settings);
         try {
+            int first = input.read();
+            if (first != -1 && first != '\uFEFF') {
+                input.unread(first);
+            }
+            reader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0), limits.maxRecordChars());
+            parser = new CsvParser(settings);
             parser.beginParsing(reader);
-        } catch (RuntimeException ex) {
+        } catch (IOException | RuntimeException ex) {
             try {
-                reader.close();
+                input.close();
             } catch (IOException close) {
                 ex.addSuppressed(close);
             }

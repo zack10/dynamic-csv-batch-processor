@@ -10,11 +10,14 @@ import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mockStatic;
 
 class BlueprintTest {
     @TempDir
@@ -106,6 +109,32 @@ class BlueprintTest {
                     parser.next();
                 }
             }).isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    @Test
+    void closesInputWhenInitialDecodingFailsAndPreservesCleanupFailure() throws Exception {
+        var blueprint = new BlueprintLoader(config(temp)).load(Path.of("examples/split-list.yaml"));
+        Path path = temp.resolve("invalid-encoding.csv");
+        for (boolean failClose : List.of(false, true)) {
+            boolean[] closed = {false};
+            var closeFailure = new IOException("Cleanup failed");
+            var input = new ByteArrayInputStream(new byte[]{(byte) 0xFF}) {
+                @Override
+                public void close() throws IOException {
+                    closed[0] = true;
+                    if (failClose) throw closeFailure;
+                    super.close();
+                }
+            };
+            try (var files = mockStatic(Files.class)) {
+                files.when(() -> Files.newInputStream(path)).thenReturn(input);
+                assertThatThrownBy(() -> new BoundedCsv(path, blueprint.input(), config(temp)))
+                        .isInstanceOf(java.nio.charset.MalformedInputException.class)
+                        .satisfies(ex -> assertThat(ex.getSuppressed())
+                                .containsExactly(failClose ? new Throwable[]{closeFailure} : new Throwable[0]));
+                assertThat(closed[0]).isTrue();
+            }
         }
     }
 
