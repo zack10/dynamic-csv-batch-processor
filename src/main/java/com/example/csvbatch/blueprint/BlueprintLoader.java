@@ -21,10 +21,10 @@ import java.util.Map;
 public class BlueprintLoader {
     private final AppProperties limits;
     private final JsonMapper mapper = JsonMapper.builder()
-            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
-            .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
-            .build();
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+        .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+        .build();
 
     public BlueprintLoader(AppProperties limits) {
         this.limits = limits;
@@ -44,11 +44,11 @@ public class BlueprintLoader {
             raw = new Yaml(new SafeConstructor(options)).load(reader);
         }
         require(raw instanceof Map<?, ?> root && root.get("input") instanceof Map<?, ?>,
-                "Blueprint must contain an input object");
+            "Blueprint must contain an input object");
         var input = (Map<?, ?>) ((Map<?, ?>) raw).get("input");
         require(input.containsKey("header") && input.get("header") instanceof Boolean
-                        && input.containsKey("ignoreEmptyRecords") && input.get("ignoreEmptyRecords") instanceof Boolean,
-                "input.header and input.ignoreEmptyRecords must be explicit booleans");
+                && input.containsKey("ignoreEmptyRecords") && input.get("ignoreEmptyRecords") instanceof Boolean,
+            "input.header and input.ignoreEmptyRecords must be explicit booleans");
         Blueprint result = mapper.convertValue(raw, Blueprint.class);
         validate(result);
         return result;
@@ -68,7 +68,7 @@ public class BlueprintLoader {
         require("doubled-quote".equals(input.escapeMode()), "escapeMode must be doubled-quote");
         require(input.headerMatching() == null || "exact".equals(input.headerMatching()), "headerMatching must be exact");
         require(blueprint.mappings() != null && !blueprint.mappings().isEmpty()
-                && blueprint.mappings().size() <= limits.maxMappings(), "Invalid mapping count");
+            && blueprint.mappings().size() <= limits.maxMappings(), "Invalid mapping count");
         var names = new HashSet<String>();
         for (var mapping : blueprint.mappings()) {
             require(mapping != null && mapping.name() != null && mapping.name().matches("[A-Za-z0-9_-]{1,80}"), "Invalid mapping name");
@@ -91,7 +91,7 @@ public class BlueprintLoader {
         require(value != null && value.source() != null, "Every value requires a source");
         var s = value.source();
         int selectors = (s.column() != null ? 1 : 0) + (s.index() != null ? 1 : 0)
-                + (s.constant() != null ? 1 : 0) + (s.columns() != null ? 1 : 0) + (s.indexes() != null ? 1 : 0);
+            + (s.constant() != null ? 1 : 0) + (s.columns() != null ? 1 : 0) + (s.indexes() != null ? 1 : 0);
         require(selectors == 1, "A source must have exactly one selector");
         require(header || (s.column() == null && s.columns() == null), "Named selectors require header: true");
         require(list || (s.columns() == null && s.indexes() == null), "Scalar values cannot select multiple columns");
@@ -103,16 +103,16 @@ public class BlueprintLoader {
         }
         if (s.columns() != null) {
             require(!s.columns().isEmpty() && s.columns().size() <= limits.maxColumns()
-                    && s.columns().stream().allMatch(x -> x != null && !x.isBlank()), "Invalid columns");
+                && s.columns().stream().allMatch(x -> x != null && !x.isBlank()), "Invalid columns");
         }
         if (s.indexes() != null) {
             require(!s.indexes().isEmpty() && s.indexes().size() <= limits.maxColumns()
-                    && s.indexes().stream().allMatch(x -> x != null && x >= 0 && x < limits.maxColumns()), "Invalid indexes");
+                && s.indexes().stream().allMatch(x -> x != null && x >= 0 && x < limits.maxColumns()), "Invalid indexes");
         }
         if (value.split() != null) {
             require(list && s.columns() == null && s.indexes() == null, "split requires a single list source");
             require("literal".equals(value.split().mode()) && value.split().delimiter() != null
-                    && !value.split().delimiter().isEmpty(), "split requires a nonempty literal delimiter");
+                && !value.split().delimiter().isEmpty(), "split requires a nonempty literal delimiter");
         }
         require(list || (value.dropEmpty() == null && value.distinct() == null), "dropEmpty/distinct apply only to lists");
         require(property || (value.valueMap() == null && value.onUnmapped() == null), "valueMap applies only to metadataToUpdate");
@@ -122,8 +122,7 @@ public class BlueprintLoader {
             require(value.onUnmapped() == null, "onUnmapped requires valueMap");
         }
         if (value.transforms() != null) {
-            require(value.transforms().stream().allMatch(
-                    List.of("trim", "uppercase", "lowercase")::contains), "Unknown transformation");
+            require(List.of("trim", "uppercase", "lowercase").containsAll(value.transforms()), "Unknown transformation");
         }
     }
 

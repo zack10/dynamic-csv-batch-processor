@@ -7,3 +7,6 @@
 .env
 .delta/
 .autohand/
+.obsidian/
+strix_runs/
+.aider*

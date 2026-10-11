@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @SpringBootApplication
 @EnableConfigurationProperties(AppProperties.class)
 public class CsvBatchApplication {
-    public static void main(String[] args) {
+    void main(String[] args) {
         var context = SpringApplication.run(CsvBatchApplication.class, args);
         System.exit(SpringApplication.exit(context));
     }
