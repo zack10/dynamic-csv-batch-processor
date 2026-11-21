@@ -6,6 +6,7 @@ import com.example.csvbatch.execution.Artifacts;
 import com.example.csvbatch.execution.TargetValidator;
 import com.example.csvbatch.normalization.CanonicalCodec;
 import com.example.csvbatch.persistence.repository.SubmissionRepository;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
@@ -86,6 +87,12 @@ public class SubmissionService {
                     throw new IllegalStateException("Prior execution is still marked running. After confirming its process is dead, repeat with --recover=true");
                 }
                 operator.recover(last);
+            } else if (last != null && last.getStatus() == BatchStatus.COMPLETED) {
+                if (Files.exists(directory.resolve("report.json"))) {
+                    throw new IllegalStateException("Submission is already complete");
+                }
+                reporter.write(last, directory);
+                return last;
             }
             // The default synchronous operator is required: the lock spans actual execution.
             var execution = operator.start(replacementJob, parameters);
