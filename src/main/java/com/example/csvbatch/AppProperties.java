@@ -36,6 +36,11 @@ public record AppProperties(
                 || maxDatabaseAttempts < 1) {
             throw new IllegalArgumentException("All processing limits must be positive");
         }
+        long canonicalFieldChars = (long) maxOldIds * 1540 + 2;
+        long canonicalRecordChars = (long) maxOldIds * 1540 + 1024;
+        if (canonicalFieldChars > Integer.MAX_VALUE || canonicalRecordChars > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Canonical processing limits overflow an int");
+        }
         identifier(targetTable);
         if (properties == null || properties.isEmpty()) {
             throw new IllegalArgumentException("No approved properties");
