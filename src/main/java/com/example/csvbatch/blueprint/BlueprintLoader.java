@@ -34,6 +34,9 @@ public class BlueprintLoader {
         if (!Files.exists(path)) {
             throw new IllegalArgumentException("Blueprint file does not exist: " + path);
         }
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalArgumentException("Blueprint path is not a file: " + path);
+        }
         if (Files.size(path) > 262144) {
             throw new IllegalArgumentException("Blueprint exceeds 256 KiB");
         }

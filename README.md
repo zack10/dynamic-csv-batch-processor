@@ -133,7 +133,7 @@ Then apply it using a **new submission ID**:
 java -jar target/dynamic-csv-batch-processor-0.1.0-SNAPSHOT.jar --spring.profiles.active=demo --input=examples/team-a.csv --blueprint=examples/team-a.yaml --submissionId=demo-apply-001 --mode=apply
 ```
 
-These commands also work in PowerShell. They are intentionally single-line commands to avoid shell-specific continuation syntax. `--mode` defaults to `validate-only` if omitted. Exit code `0` means the job completed; failures return a nonzero exit code.
+These commands also work in PowerShell. They are intentionally single-line commands to avoid shell-specific continuation syntax. `--mode` defaults to `validate-only` if omitted. Exit code `0` means the job completed; failures return a nonzero exit code. The `--blueprint` path (like the `--input` path) is resolved relative to the process working directory.
 
 The demo starts with four business rows: `(101,A1)`, `(102,A2)`, `(101,KEEP)`, `(KEEP,KEEP)`. Applying team A's file changes them to `(900,B1)`, `(900,B1)`, `(900,KEEP)`, `(KEEP,KEEP)`: **five column-update events across three distinct rows**. The report does not label update events as distinct rows.
 
