@@ -388,7 +388,7 @@ Each mapping emits exactly one command per source record. There are no condition
 
 [schema/blueprint.schema.json](schema/blueprint.schema.json) is an editor-facing JSON Schema using the default mapping-count limit. Associate it with blueprint YAML files in your editor. Runtime validation uses typed Java records and semantic validation, including rules the schema cannot express (header existence, property allowlist, configured limits, and unique mapping names).
 
-The blueprint loader uses SnakeYAML's safe constructor, rejects duplicate keys and collection aliases, limits nesting to 20, and limits YAML to 256 KiB. Unknown fields fail. There is no SpEL, SQL, JavaScript, or arbitrary object construction in the blueprint language.
+The blueprint loader uses SnakeYAML's safe constructor, rejects duplicate keys and collection aliases, limits nesting to 20, and limits YAML to 256 KiB. **Blueprint files are limited to 256 KiB.** Unknown fields fail. There is no SpEL, SQL, JavaScript, or arbitrary object construction in the blueprint language.
 
 Input supports a single-character delimiter/quote, doubled quote escaping, configured Java charset, BOM removal, CR/LF/CRLF records, and quoted multiline values. Malformed encoding is rejected rather than replaced with a placeholder. A streaming grammar guard rejects unclosed quotes and characters after a closing quote before allocating oversized records. Backslash escaping, comments, preambles, auto-detected delimiters, and lenient malformed-CSV recovery are not supported.
 
