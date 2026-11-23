@@ -47,7 +47,7 @@ public class JobConfiguration {
     Step preflight(JobRepository repository, PlatformTransactionManager tx, TargetValidator targets) {
         return new StepBuilder("preflight", repository)
                 .tasklet((contribution, context) -> {
-                    targets.validate();
+                    targets.validateTargets();
                     return RepeatStatus.FINISHED;
                 }, tx).build();
     }
