@@ -38,7 +38,7 @@ public class BlueprintLoader {
             throw new IllegalArgumentException("Blueprint path is not a file: " + path);
         }
         if (Files.size(path) > 262144) {
-            throw new IllegalArgumentException("Blueprint exceeds 256 KiB: " + path);
+            throw new IllegalArgumentException("Blueprint exceeds 256 KiB");
         }
         var options = new LoaderOptions();
         options.setAllowDuplicateKeys(false);
