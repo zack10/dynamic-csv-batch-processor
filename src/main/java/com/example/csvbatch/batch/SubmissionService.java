@@ -55,7 +55,7 @@ public class SubmissionService {
         }
         blueprints.load(blueprint);
         return submissions.withExclusiveLock(() -> {
-            targets.validate(); // Also checked on restart, when preflight may already be complete.
+            targets.validateTargets(); // Also checked on restart, when preflight may already be complete.
             Path directory = config.workDirectory().toAbsolutePath().normalize().resolve(submission);
             Files.createDirectories(directory);
             String inputHash = Artifacts.sha256(input);
