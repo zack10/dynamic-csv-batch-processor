@@ -16,7 +16,7 @@ public class TargetValidator {
         this.config = config;
     }
 
-    public void validate() throws Exception {
+    public void validateTargets() throws Exception {
         String database = targets.databaseProductName();
         if (!database.equals("H2") && !database.equals("PostgreSQL")) {
             throw new IllegalArgumentException("Unsupported database");
