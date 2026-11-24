@@ -43,7 +43,7 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
             }
         } catch (Exception ex) {
             close();
-            throw new ItemStreamException("Cannot open source CSV", ex);
+            throw new ItemStreamException("Cannot open source CSV: " + input, ex);
         }
     }
 
