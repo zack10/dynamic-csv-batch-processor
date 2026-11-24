@@ -26,7 +26,7 @@ class SourceCommandReaderEmptyCsvTest {
 
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(org.springframework.batch.infrastructure.item.ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: target/empty.csv")
+                .hasMessage("Source CSV is empty: target/empty.csv")
                 .hasCauseInstanceOf(IllegalArgumentException.class)
                 .hasRootCauseMessage("Missing CSV header");
     }
