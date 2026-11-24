@@ -26,6 +26,6 @@ class SourceCommandReaderTest {
 
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: " + input);
+                .hasMessage("Cannot open source CSV: Source CSV is empty: " + input);
     }
 }
