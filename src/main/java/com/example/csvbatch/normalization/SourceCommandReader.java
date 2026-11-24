@@ -31,7 +31,8 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
             csv = new BoundedCsv(input, blueprint.input(), limits);
             String[] header = blueprint.input().header() ? csv.next() : null;
             if (blueprint.input().header() && header == null) {
-                throw new IllegalArgumentException("Missing CSV header");
+                throw new ItemStreamException("Source CSV is empty: " + input,
+                        new IllegalArgumentException("Missing CSV header"));
             }
             width = header == null ? -1 : header.length;
             plan = new MappingPlan(blueprint, header, limits);
@@ -41,6 +42,9 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
                     throw new IllegalArgumentException("Input shortened since checkpoint");
                 }
             }
+        } catch (ItemStreamException ex) {
+            close();
+            throw ex;
         } catch (Exception ex) {
             close();
             throw new ItemStreamException("Cannot open source CSV: " + input, ex);
