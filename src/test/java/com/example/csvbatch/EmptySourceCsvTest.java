@@ -28,6 +28,6 @@ class EmptySourceCsvTest {
 
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(org.springframework.batch.infrastructure.item.ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: " + input);
+                .hasMessage("Source CSV is empty: " + input);
     }
 }
