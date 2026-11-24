@@ -43,7 +43,11 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
             }
         } catch (Exception ex) {
             close();
-            throw new ItemStreamException("Cannot open source CSV: " + input, ex);
+            String message = ex instanceof IllegalArgumentException
+                    && "Missing CSV header".equals(ex.getMessage())
+                    ? "Source CSV is empty: " + input
+                    : "Cannot open source CSV: " + input;
+            throw new ItemStreamException(message, ex);
         }
     }
 
