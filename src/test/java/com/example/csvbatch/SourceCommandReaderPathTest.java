@@ -23,7 +23,7 @@ class SourceCommandReaderPathTest {
 
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: target/empty.csv");
+                .hasMessage("Source CSV is empty: target/empty.csv");
     }
 
     @Test
