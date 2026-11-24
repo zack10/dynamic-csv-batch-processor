@@ -22,7 +22,7 @@ class SourceCommandReaderTest {
         Files.createFile(path);
 
         assertThatThrownBy(() -> reader(path).open(new ExecutionContext()))
-                .hasMessage("Cannot open source CSV: " + path);
+                .hasMessage("Source CSV is empty: " + path);
     }
 
     @Test
