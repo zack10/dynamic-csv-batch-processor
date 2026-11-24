@@ -30,7 +30,7 @@ class SourceCommandReaderTest {
         SourceCommandReader reader = new SourceCommandReader(path, HEADER_BLUEPRINT, LIMITS);
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: " + path)
+                .hasMessage("Source CSV is empty: " + path)
                 .hasCauseInstanceOf(IllegalArgumentException.class)
                 .hasRootCauseMessage("Missing CSV header");
     }
