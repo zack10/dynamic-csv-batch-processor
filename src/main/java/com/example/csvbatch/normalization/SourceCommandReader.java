@@ -27,10 +27,12 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
 
     @Override
     public void open(ExecutionContext context) {
+        boolean emptySource = false;
         try {
             csv = new BoundedCsv(input, blueprint.input(), limits);
             String[] header = blueprint.input().header() ? csv.next() : null;
             if (blueprint.input().header() && header == null) {
+                emptySource = true;
                 throw new IllegalArgumentException("Missing CSV header");
             }
             width = header == null ? -1 : header.length;
@@ -43,7 +45,10 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
             }
         } catch (Exception ex) {
             close();
-            throw new ItemStreamException("Cannot open source CSV: " + input, ex);
+            String message = emptySource
+                    ? "Source CSV is empty: " + input
+                    : "Cannot open source CSV: " + input;
+            throw new ItemStreamException(message, ex);
         }
     }
 
