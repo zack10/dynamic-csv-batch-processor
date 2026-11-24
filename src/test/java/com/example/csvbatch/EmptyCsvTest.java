@@ -28,7 +28,7 @@ class EmptyCsvTest {
 
         assertThatThrownBy(() -> reader.open(new ExecutionContext()))
                 .isInstanceOf(ItemStreamException.class)
-                .hasMessage("Cannot open source CSV: " + input)
+                .hasMessage("Source CSV is empty: " + input)
                 .hasCauseInstanceOf(IllegalArgumentException.class)
                 .cause()
                 .hasMessage("Missing CSV header");
