@@ -24,6 +24,8 @@ public final class BoundedCsv implements AutoCloseable {
     private final StrictCsvReader strictReader;
     private final int maxRecordChars;
     private boolean started;
+    private long recordsReturned;
+    private long failureRecord;
 
     public BoundedCsv(Path path, Blueprint.Input format, AppProperties limits) throws IOException {
         var settings = new CsvParserSettings();
@@ -56,7 +58,8 @@ public final class BoundedCsv implements AutoCloseable {
             if (first != -1 && first != '\uFEFF') {
                 input.unread(first);
             }
-            strictReader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0), limits.maxRecordChars());
+            strictReader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0),
+                limits.maxRecordChars(), format.ignoreEmptyRecords());
             reader = strictReader;
             parser = new CsvParser(settings);
         } catch (IOException | RuntimeException ex) {
@@ -80,13 +83,19 @@ public final class BoundedCsv implements AutoCloseable {
                 long size = 0;
                 for (String field : row) size += field.length();
                 if (size > maxRecordChars) {
-                    throw new IllegalArgumentException("Logical record exceeds configured character limit");
+                    throw new IllegalArgumentException("Logical record exceeds configured character limit " + maxRecordChars);
                 }
+                recordsReturned++;
             }
             return row;
         } catch (RuntimeException ex) {
+            failureRecord = hasIoCause(ex) ? strictReader.failedRecord() : recordsReturned + 1;
             throw new IllegalArgumentException(syntaxMessage(ex), ex);
         }
+    }
+
+    long failureRecord() {
+        return failureRecord == 0 ? recordsReturned + 1 : failureRecord;
     }
 
     long recordsSeen() {

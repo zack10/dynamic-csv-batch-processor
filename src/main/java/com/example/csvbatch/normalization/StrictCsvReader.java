@@ -15,15 +15,23 @@ final class StrictCsvReader extends FilterReader {
     private final char delimiter;
     private final char quote;
     private final int maxRecordChars;
+    private final boolean ignoreEmptyRecords;
     private int recordChars;
     private long completedRecords;
     private boolean currentRecordHasContent;
+    private boolean carriageReturnSeen;
 
     StrictCsvReader(Reader reader, char delimiter, char quote, int maxRecordChars) {
+        this(reader, delimiter, quote, maxRecordChars, true);
+    }
+
+    StrictCsvReader(Reader reader, char delimiter, char quote, int maxRecordChars,
+                    boolean ignoreEmptyRecords) {
         super(reader);
         this.delimiter = delimiter;
         this.quote = quote;
         this.maxRecordChars = maxRecordChars;
+        this.ignoreEmptyRecords = ignoreEmptyRecords;
     }
 
     @Override
@@ -35,14 +43,30 @@ final class StrictCsvReader extends FilterReader {
 
     @Override
     public int read(char[] buffer, int offset, int length) throws IOException {
-        int count = in.read(buffer, offset, length);
-        if (count == -1) check(-1);
-        else for (int i = offset; i < offset + count; i++) check(buffer[i]);
-        return count;
+        if (length == 0) return 0;
+        int count = 0;
+        while (count < length) {
+            int c = in.read();
+            if (c == -1) {
+                check(-1);
+                break;
+            }
+            long recordsBefore = completedRecords;
+            boolean crlfEnd = carriageReturnSeen && c == '\n';
+            check(c);
+            buffer[offset + count++] = (char) c;
+            // Include the LF of CRLF in this record, but do not read another row.
+            if (crlfEnd || (completedRecords != recordsBefore && c != '\r')) break;
+        }
+        return count == 0 ? -1 : count;
     }
 
     long recordsSeen() {
         return completedRecords + (currentRecordHasContent ? 1 : 0);
+    }
+
+    long failedRecord() {
+        return completedRecords + 1;
     }
 
     private void check(int c) throws IOException {
@@ -53,6 +77,12 @@ final class StrictCsvReader extends FilterReader {
         if (++recordChars > maxRecordChars) {
             throw new IOException("CSV record exceeds configured raw character limit " + maxRecordChars);
         }
+        if (carriageReturnSeen && c == '\n') {
+            carriageReturnSeen = false;
+            recordChars = 0;
+            return;
+        }
+        carriageReturnSeen = false;
         if (c != '\r' && c != '\n') currentRecordHasContent = true;
         if (state == State.QUOTED) {
             if (c == quote) state = State.AFTER_QUOTE;
@@ -63,10 +93,11 @@ final class StrictCsvReader extends FilterReader {
             return;
         }
         if (c == '\r' || c == '\n') {
-            if (currentRecordHasContent) completedRecords++;
+            if (currentRecordHasContent || !ignoreEmptyRecords) completedRecords++;
             currentRecordHasContent = false;
             state = State.START;
             recordChars = 0;
+            carriageReturnSeen = c == '\r';
             return;
         }
         if (c == delimiter) {

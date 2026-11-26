@@ -36,6 +36,29 @@ class CsvSyntaxErrorTest {
     }
 
     @Test
+    void reportsOversizedFirstDataRecord() throws Exception {
+        assertFailure("old_codes,replacement\n1,abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\n",
+                "CSV record exceeds configured raw character limit", "source record 1", "30");
+    }
+
+    @Test
+    void identifiesMalformedHeaderAsHeader() throws Exception {
+        assertFailure("old_codes,replac\"ement\n1,ok\n", "Unexpected quote inside unquoted CSV field", "in the header");
+    }
+
+    @Test
+    void retainedBlankRecordIsIncluded() throws Exception {
+        assertFailure(retainedBlueprint(), "old_codes,replacement\n1,ok\n\n2,ab\"c\n",
+                "Unexpected quote inside unquoted CSV field", "source record 3");
+    }
+
+    @Test
+    void retainedBlankWithCrLfIsIncludedOnce() throws Exception {
+        assertFailure(retainedBlueprint(), "old_codes,replacement\r\n1,ok\r\n\r\n2,ab\"c\r\n",
+                "Unexpected quote inside unquoted CSV field", "source record 3");
+    }
+
+    @Test
     void ignoredBlankRecordDoesNotChangeSyntaxRecordNumber() throws Exception {
         assertFailure("old_codes,replacement\n1,ok\n\n2,ab\"c\n", "Unexpected quote inside unquoted CSV field", "source record 2");
     }
@@ -81,6 +104,34 @@ class CsvSyntaxErrorTest {
                 org.assertj.core.api.Assertions.assertThat(ex).hasMessageContaining(expectation);
             }
         });
+    }
+
+    private Path retainedBlueprint() throws Exception {
+        Path blueprint = temp.resolve("retained.yaml");
+        Files.writeString(blueprint, """
+                version: 1
+                name: retained
+                input:
+                  encoding: UTF-8
+                  delimiter: ","
+                  quote: '"'
+                  escapeMode: doubled-quote
+                  header: true
+                  ignoreEmptyRecords: false
+                mappings:
+                  - name: replace-customer
+                    oldIdValues:
+                      source: {column: old_codes}
+                      split: {delimiter: "|", mode: literal}
+                      transforms: [trim]
+                      dropEmpty: true
+                      distinct: true
+                    newIdValue:
+                      source: {column: replacement}
+                    metadataToUpdate:
+                      source: {constant: customerId}
+                """);
+        return blueprint;
     }
 
     private AppProperties config() {
