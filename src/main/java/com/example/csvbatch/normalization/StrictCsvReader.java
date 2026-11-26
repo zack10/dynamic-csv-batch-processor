@@ -16,6 +16,8 @@ final class StrictCsvReader extends FilterReader {
     private final char quote;
     private final int maxRecordChars;
     private int recordChars;
+    private long completedRecords;
+    private boolean currentRecordHasContent;
 
     StrictCsvReader(Reader reader, char delimiter, char quote, int maxRecordChars) {
         super(reader);
@@ -39,12 +41,19 @@ final class StrictCsvReader extends FilterReader {
         return count;
     }
 
+    long recordsSeen() {
+        return completedRecords + (currentRecordHasContent ? 1 : 0);
+    }
+
     private void check(int c) throws IOException {
         if (c == -1) {
             if (state == State.QUOTED) throw new IOException("Unterminated quoted CSV field");
             return;
         }
-        if (++recordChars > maxRecordChars) throw new IOException("CSV record exceeds configured raw character limit");
+        if (++recordChars > maxRecordChars) {
+            throw new IOException("CSV record exceeds configured raw character limit " + maxRecordChars);
+        }
+        if (c != '\r' && c != '\n') currentRecordHasContent = true;
         if (state == State.QUOTED) {
             if (c == quote) state = State.AFTER_QUOTE;
             return;
@@ -54,6 +63,8 @@ final class StrictCsvReader extends FilterReader {
             return;
         }
         if (c == '\r' || c == '\n') {
+            if (currentRecordHasContent) completedRecords++;
+            currentRecordHasContent = false;
             state = State.START;
             recordChars = 0;
             return;

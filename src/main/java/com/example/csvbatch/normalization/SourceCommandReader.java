@@ -42,14 +42,29 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
                 }
             }
         } catch (Exception ex) {
+            boolean syntaxFailure = csv != null && BoundedCsv.hasIoCause(ex);
+            long failedRecord = syntaxFailure ? Math.max(record + 1,
+                    csv.recordsSeen() - (blueprint.input().header() ? 1 : 0)) : 0;
             close();
+            if (syntaxFailure) {
+                throw new ItemStreamException(BoundedCsv.syntaxMessage(ex)
+                        + " at source record " + failedRecord, ex);
+            }
             throw new ItemStreamException("Cannot open source CSV", ex);
         }
     }
 
     @Override
     public List<Command> read() {
-        String[] row = csv.next();
+        String[] row;
+        try {
+            row = csv.next();
+        } catch (RuntimeException ex) {
+            long failedRecord = Math.max(record + 1,
+                    csv.recordsSeen() - (blueprint.input().header() ? 1 : 0));
+            throw new IllegalArgumentException(BoundedCsv.syntaxMessage(ex)
+                    + " at source record " + failedRecord, ex);
+        }
         if (row == null) return null;
         record++;
         if (width >= 0 && row.length != width) {

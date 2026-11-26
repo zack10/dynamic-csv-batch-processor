@@ -21,7 +21,9 @@ import java.nio.file.Path;
 public final class BoundedCsv implements AutoCloseable {
     private final CsvParser parser;
     private final Reader reader;
+    private final StrictCsvReader strictReader;
     private final int maxRecordChars;
+    private boolean started;
 
     public BoundedCsv(Path path, Blueprint.Input format, AppProperties limits) throws IOException {
         var settings = new CsvParserSettings();
@@ -54,9 +56,9 @@ public final class BoundedCsv implements AutoCloseable {
             if (first != -1 && first != '\uFEFF') {
                 input.unread(first);
             }
-            reader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0), limits.maxRecordChars());
+            strictReader = new StrictCsvReader(input, format.delimiter().charAt(0), format.quote().charAt(0), limits.maxRecordChars());
+            reader = strictReader;
             parser = new CsvParser(settings);
-            parser.beginParsing(reader);
         } catch (IOException | RuntimeException ex) {
             try {
                 input.close();
@@ -68,15 +70,49 @@ public final class BoundedCsv implements AutoCloseable {
     }
 
     public String[] next() {
-        String[] row = parser.parseNext();
-        if (row != null) {
-            long size = 0;
-            for (String field : row) size += field.length();
-            if (size > maxRecordChars) {
-                throw new IllegalArgumentException("Logical record exceeds configured character limit");
+        try {
+            if (!started) {
+                parser.beginParsing(reader);
+                started = true;
             }
+            String[] row = parser.parseNext();
+            if (row != null) {
+                long size = 0;
+                for (String field : row) size += field.length();
+                if (size > maxRecordChars) {
+                    throw new IllegalArgumentException("Logical record exceeds configured character limit");
+                }
+            }
+            return row;
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException(syntaxMessage(ex), ex);
         }
-        return row;
+    }
+
+    long recordsSeen() {
+        return strictReader.recordsSeen();
+    }
+
+    static boolean hasIoCause(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof IOException) return true;
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    static String syntaxMessage(Throwable failure) {
+        Throwable current = failure;
+        String message = failure.getMessage();
+        while (current != null) {
+            if (current.getMessage() != null
+                    && (current instanceof IOException || current.getClass().getName().contains("TextParsingException"))) {
+                message = current.getMessage();
+            }
+            current = current.getCause();
+        }
+        return message == null ? failure.toString() : message;
     }
 
     @Override
