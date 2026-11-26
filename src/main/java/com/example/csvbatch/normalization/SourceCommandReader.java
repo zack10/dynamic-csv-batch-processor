@@ -27,9 +27,12 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
 
     @Override
     public void open(ExecutionContext context) {
+        boolean readingHeader = false;
         try {
             csv = new BoundedCsv(input, blueprint.input(), limits);
+            readingHeader = blueprint.input().header();
             String[] header = blueprint.input().header() ? csv.next() : null;
+            readingHeader = false;
             if (blueprint.input().header() && header == null) {
                 throw new IllegalArgumentException("Missing CSV header");
             }
@@ -42,14 +45,31 @@ public final class SourceCommandReader implements ItemStreamReader<List<Command>
                 }
             }
         } catch (Exception ex) {
+            boolean syntaxFailure = csv != null && BoundedCsv.hasIoCause(ex);
+            long physicalFailureRecord = syntaxFailure ? csv.failureRecord() : 0;
+            long failedRecord = syntaxFailure ? Math.max(record + 1,
+                    physicalFailureRecord - (blueprint.input().header() ? 1 : 0)) : 0;
+            boolean headerFailure = syntaxFailure && blueprint.input().header() && physicalFailureRecord <= 1;
             close();
+            if (syntaxFailure) {
+                String location = headerFailure ? " in the header" : " at source record " + failedRecord;
+                throw new ItemStreamException(BoundedCsv.syntaxMessage(ex) + location, ex);
+            }
             throw new ItemStreamException("Cannot open source CSV", ex);
         }
     }
 
     @Override
     public List<Command> read() {
-        String[] row = csv.next();
+        String[] row;
+        try {
+            row = csv.next();
+        } catch (RuntimeException ex) {
+            long failedRecord = Math.max(record + 1,
+                    csv.failureRecord() - (blueprint.input().header() ? 1 : 0));
+            throw new IllegalArgumentException(BoundedCsv.syntaxMessage(ex)
+                    + " at source record " + failedRecord, ex);
+        }
         if (row == null) return null;
         record++;
         if (width >= 0 && row.length != width) {
