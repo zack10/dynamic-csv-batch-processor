@@ -2,6 +2,7 @@ package com.example.csvbatch.batch;
 
 import com.example.csvbatch.execution.Artifacts;
 import com.example.csvbatch.persistence.repository.ReplacementRunRepository;
+import com.example.csvbatch.persistence.repository.ReplacementPropertyCountRepository;
 import com.example.csvbatch.persistence.repository.StagedCommandRepository;
 import com.example.csvbatch.persistence.repository.StagedPairRepository;
 import org.springframework.batch.core.job.JobExecution;
@@ -17,13 +18,16 @@ public class RunReporter {
     private final StagedCommandRepository commands;
     private final StagedPairRepository pairs;
     private final ReplacementRunRepository runs;
+    private final ReplacementPropertyCountRepository propertyCounts;
     private final JobRepository repository;
 
     public RunReporter(StagedCommandRepository commands, StagedPairRepository pairs,
-                       ReplacementRunRepository runs, JobRepository repository) {
+                       ReplacementRunRepository runs, ReplacementPropertyCountRepository propertyCounts,
+                       JobRepository repository) {
         this.commands = commands;
         this.pairs = pairs;
         this.runs = runs;
+        this.propertyCounts = propertyCounts;
         this.repository = repository;
     }
 
@@ -49,6 +53,10 @@ public class RunReporter {
         database.put("affected_rows", counters.affectedRows());
         database.put("zero_matches", counters.zeroMatches());
         database.put("unknown_counts", counters.unknownCounts());
+        var updatedByProperty = new LinkedHashMap<String, Long>();
+        propertyCounts.findBySubmissionId(submission)
+                .forEach(count -> updatedByProperty.put(count.propertyKey(), count.updatedRows()));
+        database.put("updated_rows_by_property", updatedByProperty);
         result.put("database", database);
         var steps = new LinkedHashMap<String, Object>();
         for (String name : new String[]{"preflight", "normalize", "validateCommands", "publishCanonical", "applyUpdates"}) {
