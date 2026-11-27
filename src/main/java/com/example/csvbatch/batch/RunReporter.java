@@ -34,6 +34,8 @@ public class RunReporter {
         result.put("executionId", execution.getId());
         result.put("status", execution.getStatus().name());
         result.put("mode", execution.getJobParameters().getString("mode"));
+        boolean dryRun = Boolean.parseBoolean(execution.getJobParameters().getString("dryRun", "false"));
+        result.put("dryRun", dryRun);
         result.put("startedAt", String.valueOf(execution.getStartTime()));
         result.put("finishedAt", String.valueOf(execution.getEndTime()));
         var summary = commands.summarizeBySubmissionId(submission);
@@ -60,7 +62,8 @@ public class RunReporter {
         }
         result.put("steps", steps);
         result.put("errors", execution.getAllFailureExceptions().stream().map(Throwable::toString).toList());
-        result.put("notes", "Counts describe committed work. Zero matches may include duplicate mappings. Affected rows are update events, not distinct records.");
+        result.put("notes", (dryRun ? "This was a dry run: no business-table changes were applied. " : "")
+                + "Counts describe committed work. Zero matches may include duplicate mappings. Affected rows are update events, not distinct records.");
         Artifacts.writeJson(directory.resolve("report.json"), result);
     }
 }

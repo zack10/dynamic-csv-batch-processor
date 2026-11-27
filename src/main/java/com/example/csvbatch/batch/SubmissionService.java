@@ -47,6 +47,10 @@ public class SubmissionService {
     }
 
     public JobExecution submit(String submission, Path input, Path blueprint, String mode, boolean recover) throws Exception {
+        return submit(submission, input, blueprint, mode, recover, false);
+    }
+
+    public JobExecution submit(String submission, Path input, Path blueprint, String mode, boolean recover, boolean dryRun) throws Exception {
         if (!submission.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,79}")) {
             throw new IllegalArgumentException("Invalid submissionId");
         }
@@ -80,7 +84,8 @@ public class SubmissionService {
             var parameters = new JobParametersBuilder().addString("submissionId", submission, true)
                     .addString("input", directory.resolve("source.csv").toString(), false)
                     .addString("blueprint", directory.resolve("blueprint.yaml").toString(), false)
-                    .addString("directory", directory.toString(), false).addString("mode", mode, false).toJobParameters();
+                    .addString("directory", directory.toString(), false).addString("mode", mode, false)
+                    .addString("dryRun", Boolean.toString(dryRun), false).toJobParameters();
             var last = repository.getLastJobExecution("replacementJob", parameters);
             if (last != null && last.isRunning()) {
                 if (!recover) {

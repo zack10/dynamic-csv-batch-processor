@@ -32,7 +32,7 @@ public class CommandLineRunner implements ApplicationRunner, ExitCodeGenerator {
             }
 
             for (String option : args.getOptionNames()) {
-                if (!Set.of("input", "blueprint", "submissionId", "mode", "recover").contains(option)
+                if (!Set.of("input", "blueprint", "submissionId", "mode", "recover", "dry-run").contains(option)
                         && !option.startsWith("spring.") && !option.startsWith("app.") && !option.startsWith("logging.")) {
                     throw new IllegalArgumentException("Unknown option: " + option);
                 }
@@ -43,8 +43,16 @@ public class CommandLineRunner implements ApplicationRunner, ExitCodeGenerator {
                 throw new IllegalArgumentException("recover must be true or false");
             }
 
+            boolean dryRun = args.containsOption("dry-run");
+            var dryRunValues = args.getOptionValues("dry-run");
+            if (dryRunValues != null && !dryRunValues.isEmpty()) {
+                if (dryRunValues.size() != 1 || !Set.of("true", "false").contains(dryRunValues.getFirst())) {
+                    throw new IllegalArgumentException("dry-run must be true or false");
+                }
+                dryRun = Boolean.parseBoolean(dryRunValues.getFirst());
+            }
             var execution = submissions.submit(option(args, "submissionId", null), Path.of(option(args, "input", null)),
-                    Path.of(option(args, "blueprint", null)), option(args, "mode", "validate-only"), Boolean.parseBoolean(recover));
+                    Path.of(option(args, "blueprint", null)), option(args, "mode", "validate-only"), Boolean.parseBoolean(recover), dryRun);
             exitCode = execution.getStatus() == BatchStatus.COMPLETED ? 0 : 1;
             LOG.info("Submission finished: status={}, execution={}", execution.getStatus(), execution.getId());
         } catch (Exception ex) {

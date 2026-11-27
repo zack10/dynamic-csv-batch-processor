@@ -101,8 +101,9 @@ public class JobConfiguration {
     ItemStreamReader<Command> canonicalReader(AppProperties limits,
                                               @Value("#{jobParameters['directory']}") String directory,
                                               @Value("#{jobParameters['submissionId']}") String submission,
-                                              @Value("#{jobParameters['mode']}") String mode) {
-        return new CanonicalReader(Path.of(directory), submission, mode.equals("apply"), limits);
+                                              @Value("#{jobParameters['mode']}") String mode,
+                                              @Value("#{jobParameters['dryRun']}") String dryRun) {
+        return new CanonicalReader(Path.of(directory), submission, mode.equals("apply") && !Boolean.parseBoolean(dryRun), limits);
     }
 
     @Bean
