@@ -24,7 +24,19 @@ public class ReplacementUpdateRepository {
     }
 
     public void applyAndRecord(String submission, Map<String, List<Object[]>> groups) {
+        // Create every submitted property, including properties with no matching rows.
+        jdbc.update("""
+                INSERT INTO replacement_property_count (submission_id, property_key, updated_rows)
+                SELECT submission_id, property_key, 0 FROM staged_command
+                WHERE submission_id = ? AND NOT EXISTS (
+                    SELECT 1 FROM replacement_property_count c
+                    WHERE c.submission_id = staged_command.submission_id
+                      AND c.property_key = staged_command.property_key)
+                GROUP BY submission_id, property_key
+                """, submission);
+
         long statements = 0, affected = 0, zero = 0, unknown = 0;
+        Map<String, Long> propertyAffected = new java.util.LinkedHashMap<>();
         for (var entry : groups.entrySet()) {
             if (entry.getValue().isEmpty()) continue;
             // Identifiers originate exclusively from validated application configuration.
@@ -41,8 +53,13 @@ public class ReplacementUpdateRepository {
                     zero++;
                 } else {
                     affected += count;
+                    propertyAffected.merge(entry.getKey(), (long) count, Long::sum);
                 }
             }
+        }
+        for (var entry : propertyAffected.entrySet()) {
+            jdbc.update("UPDATE replacement_property_count SET updated_rows = updated_rows + ? " +
+                    "WHERE submission_id = ? AND property_key = ?", entry.getValue(), submission, entry.getKey());
         }
         // Database counters roll back with the business updates, including on retried chunks.
         jdbc.update("""
