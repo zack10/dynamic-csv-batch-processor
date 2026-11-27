@@ -5,6 +5,7 @@ import com.example.csvbatch.blueprint.BlueprintLoader;
 import com.example.csvbatch.execution.*;
 import com.example.csvbatch.normalization.Command;
 import com.example.csvbatch.normalization.SourceCommandReader;
+import com.example.csvbatch.normalization.SourceValidationTasklet;
 import com.example.csvbatch.normalization.StagingWriter;
 import com.example.csvbatch.persistence.repository.ReplacementUpdateRepository;
 import com.example.csvbatch.persistence.repository.StagingRepository;
@@ -32,10 +33,11 @@ import java.util.Objects;
 @Configuration
 public class JobConfiguration {
     @Bean
-    Job replacementJob(JobRepository repository, Step preflight, Step normalize, Step validateCommands,
+    Job replacementJob(JobRepository repository, Step preflight, Step sourceValidation, Step normalize, Step validateCommands,
                        Step publishCanonical, Step applyUpdates) {
         return new JobBuilder("replacementJob", repository)
                 .start(preflight)
+                .next(sourceValidation)
                 .next(normalize)
                 .next(validateCommands)
                 .next(publishCanonical)
@@ -48,6 +50,17 @@ public class JobConfiguration {
         return new StepBuilder("preflight", repository)
                 .tasklet((contribution, context) -> {
                     targets.validate();
+                    return RepeatStatus.FINISHED;
+                }, tx).build();
+    }
+
+    @Bean
+    Step sourceValidation(JobRepository repository, PlatformTransactionManager tx,
+                          SourceValidationTasklet validator) {
+        return new StepBuilder("sourceValidation", repository)
+                .tasklet((contribution, context) -> {
+                    var parameters = contribution.getStepExecution().getJobParameters();
+                    validator.validate(Path.of(parameters.getString("input")), Path.of(parameters.getString("blueprint")));
                     return RepeatStatus.FINISHED;
                 }, tx).build();
     }

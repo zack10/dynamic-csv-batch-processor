@@ -29,7 +29,7 @@ public final class MappingPlan {
             }
         }
         mappings = blueprint.mappings().stream().map(m -> new Compiled(m.name(),
-                compile(m.oldIdValues(), names), compile(m.newIdValue(), names), compile(m.metadataToUpdate(), names))).toList();
+                compile(m.oldIdValues(), names, false), compile(m.newIdValue(), names), compile(m.metadataToUpdate(), names))).toList();
     }
 
     public List<Command> apply(String[] row, long record) {
@@ -41,6 +41,10 @@ public final class MappingPlan {
                 String next = m.next().apply(row).getFirst();
                 String key = m.property().apply(row).getFirst();
                 validate(old, next, key, limits);
+                var distinct = new HashSet<String>();
+                for (String id : old) {
+                    if (!distinct.add(id)) throw new IllegalArgumentException("Duplicate old ID: " + id);
+                }
                 result.add(new Command(record, i, m.name(), old, next, key));
             } catch (RuntimeException ex) {
                 throw new IllegalArgumentException("Source record " + record + ", mapping " + m.name() + ": " + ex.getMessage(), ex);
@@ -65,6 +69,11 @@ public final class MappingPlan {
     }
 
     private static Function<String[], List<String>> compile(Blueprint.Value value, Map<String, Integer> header) {
+        return compile(value, header, true);
+    }
+
+    private static Function<String[], List<String>> compile(Blueprint.Value value, Map<String, Integer> header,
+                                                            boolean applyDistinct) {
         var source = value.source();
         List<Integer> indexes;
         if (source.column() != null) {
@@ -102,7 +111,7 @@ public final class MappingPlan {
             if (Boolean.TRUE.equals(value.dropEmpty())) {
                 values.removeIf(String::isEmpty);
             }
-            if (Boolean.TRUE.equals(value.distinct())) {
+            if (applyDistinct && Boolean.TRUE.equals(value.distinct())) {
                 values = new ArrayList<>(values.stream().distinct().toList());
             }
             if (value.valueMap() != null) {
