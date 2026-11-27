@@ -9,7 +9,8 @@ public record Blueprint(int version, String name, Input input, List<Mapping> map
                         boolean header, String headerMatching, boolean ignoreEmptyRecords) {
     }
 
-    public record Source(String column, Integer index, String constant, List<String> columns, List<Integer> indexes) {
+    public record Source(String column, Integer index, String constant, List<String> columns, List<Integer> indexes,
+                        Boolean trim) {
     }
 
     public record Split(String delimiter, String mode) {

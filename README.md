@@ -340,6 +340,8 @@ Each `source` contains **exactly one** selector:
 - `columns: [old_a, old_b]`: list of named columns, only for `oldIdValues`.
 - `indexes: [0, 1]`: list of positions, only for `oldIdValues`.
 
+Any source may also set `trim: true` to remove leading and trailing spaces and tabs from the selected value(s) before mapping. This is off by default; a value that becomes empty is rejected with its source-record context. This source-level option is applied before list splitting, while the existing value-level `transforms: [trim]` remains available for per-element transformations.
+
 Quote numeric-looking YAML constants, for example `constant: "0012"`. Scalar coercion is disabled; the loader will not silently turn a YAML integer into an ID string. Missing or duplicate headers, out-of-range indexes, unsupported keys, unknown transforms, and unknown properties fail validation.
 
 ### Embedded lists
@@ -364,7 +366,7 @@ This delimiter is independent of the CSV delimiter and is treated literally, not
 
 ### Transformations and evaluation order
 
-1. Extract selected values.
+1. Extract selected values (and apply source-level `trim: true`, if configured).
 2. Split a single list cell if configured.
 3. Apply transformations in the listed order, individually to each element.
 4. Drop empty strings if `dropEmpty: true`.

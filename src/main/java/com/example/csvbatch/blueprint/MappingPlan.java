@@ -90,6 +90,12 @@ public final class MappingPlan {
                 }
                 values.add(row[index]);
             }
+            if (Boolean.TRUE.equals(source.trim())) {
+                values.replaceAll(MappingPlan::trimSourceValue);
+                if (values.stream().anyMatch(String::isEmpty)) {
+                    throw new IllegalArgumentException("Source value is empty after trimming");
+                }
+            }
             if (split != null) values = new ArrayList<>(Arrays.asList(split.split(values.getFirst(), -1)));
             for (String transform : transforms) {
                 values.replaceAll(s -> switch (transform) {
@@ -114,6 +120,14 @@ public final class MappingPlan {
             }
             return values;
         };
+    }
+
+    private static String trimSourceValue(String value) {
+        int start = 0;
+        int end = value.length();
+        while (start < end && (value.charAt(start) == ' ' || value.charAt(start) == '\t')) start++;
+        while (end > start && (value.charAt(end - 1) == ' ' || value.charAt(end - 1) == '\t')) end--;
+        return value.substring(start, end);
     }
 
     private static int resolve(String name, Map<String, Integer> header) {
