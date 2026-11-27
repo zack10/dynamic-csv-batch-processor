@@ -23,4 +23,9 @@ public class StagingRepository {
                 """, commands);
         jdbc.batchUpdate("INSERT INTO staged_pair VALUES (?, ?, ?, ?, ?, ?, ?)", pairs);
     }
+
+    public void clear(String submission) {
+        jdbc.update("DELETE FROM staged_pair WHERE submission_id = ?", submission);
+        jdbc.update("DELETE FROM staged_command WHERE submission_id = ?", submission);
+    }
 }

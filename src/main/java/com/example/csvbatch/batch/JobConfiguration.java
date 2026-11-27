@@ -44,9 +44,14 @@ public class JobConfiguration {
     }
 
     @Bean
-    Step preflight(JobRepository repository, PlatformTransactionManager tx, TargetValidator targets) {
+    Step preflight(JobRepository repository, PlatformTransactionManager tx, TargetValidator targets,
+                   StagingRepository staging) {
         return new StepBuilder("preflight", repository)
                 .tasklet((contribution, context) -> {
+                    var parameters = contribution.getStepExecution().getJobParameters();
+                    if (Boolean.parseBoolean(parameters.getString("dryRun"))) {
+                        staging.clear(parameters.getString("submissionId"));
+                    }
                     targets.validate();
                     return RepeatStatus.FINISHED;
                 }, tx).build();

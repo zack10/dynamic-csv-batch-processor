@@ -85,7 +85,7 @@ public class SubmissionService {
                     .addString("input", directory.resolve("source.csv").toString(), false)
                     .addString("blueprint", directory.resolve("blueprint.yaml").toString(), false)
                     .addString("directory", directory.toString(), false).addString("mode", mode, false)
-                    .addString("dryRun", Boolean.toString(dryRun), false).toJobParameters();
+                    .addString("dryRun", Boolean.toString(dryRun), true).toJobParameters();
             var last = repository.getLastJobExecution("replacementJob", parameters);
             if (last != null && last.isRunning()) {
                 if (!recover) {

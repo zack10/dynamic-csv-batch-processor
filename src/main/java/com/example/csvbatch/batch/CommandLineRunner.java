@@ -43,6 +43,12 @@ public class CommandLineRunner implements ApplicationRunner, ExitCodeGenerator {
                 throw new IllegalArgumentException("recover must be true or false");
             }
 
+            long dryRunOccurrences = java.util.Arrays.stream(args.getSourceArgs())
+                    .filter(arg -> arg.equals("--dry-run") || arg.startsWith("--dry-run="))
+                    .count();
+            if (dryRunOccurrences > 1) {
+                throw new IllegalArgumentException("Expected at most one --dry-run option");
+            }
             boolean dryRun = args.containsOption("dry-run");
             var dryRunValues = args.getOptionValues("dry-run");
             if (dryRunValues != null && !dryRunValues.isEmpty()) {
