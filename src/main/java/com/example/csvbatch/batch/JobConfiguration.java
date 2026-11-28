@@ -9,6 +9,7 @@ import com.example.csvbatch.normalization.SourceValidationTasklet;
 import com.example.csvbatch.normalization.StagingWriter;
 import com.example.csvbatch.persistence.repository.ReplacementUpdateRepository;
 import com.example.csvbatch.persistence.repository.StagingRepository;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -59,6 +60,14 @@ public class JobConfiguration {
                           SourceValidationTasklet validator) {
         return new StepBuilder("sourceValidation", repository)
                 .tasklet((contribution, context) -> {
+                    // Older job instances predate this step. If normalization already completed,
+                    // the original source has been consumed and must not be reread on restart.
+                    boolean normalized = contribution.getStepExecution().getJobExecution().getStepExecutions().stream()
+                            .anyMatch(step -> "normalize".equals(step.getStepName())
+                                    && step.getStatus() == BatchStatus.COMPLETED);
+                    if (normalized) {
+                        return RepeatStatus.FINISHED;
+                    }
                     var parameters = contribution.getStepExecution().getJobParameters();
                     validator.validate(Path.of(parameters.getString("input")), Path.of(parameters.getString("blueprint")));
                     return RepeatStatus.FINISHED;
