@@ -146,6 +146,24 @@ class BlueprintTrimTest {
         assertThat(plan.apply(new String[]{" 101 ", "900"}, 1).getFirst().oldIdValues()).containsExactly("101");
     }
 
+    @Test
+    void validatesPropertyConstantAfterAllValueTransforms() throws Exception {
+        Path path = temp.resolve("transformed-property.yaml");
+        Files.writeString(path, blueprint("{column: old}", "{column: replacement}",
+                "{constant: ' customerId ', trim: true}")
+                .replace("metadataToUpdate:\n      source: {constant: ' customerId ', trim: true}",
+                        "metadataToUpdate:\n      source: {constant: ' customerId ', trim: true}\n      transforms: [uppercase]"));
+        var properties = Map.of(
+                "CUSTOMERID", new AppProperties.Property("customer_id_upper", 64),
+                "departmentId", new AppProperties.Property("department_id", 32));
+        var config = new AppProperties(false, temp, 2, 128, 8192, 65536, 100, 16, 10000, 30, 3,
+                "business_record", properties);
+
+        var blueprint = new BlueprintLoader(config).load(path);
+        assertThat(new MappingPlan(blueprint, new String[]{"old", "replacement"}, config)
+                .apply(new String[]{"101", "900"}, 1).getFirst().metadataToUpdate()).isEqualTo("CUSTOMERID");
+    }
+
     private static String blueprint(String oldSource, String newSource, String propertySource) {
         return "version: 1\n"
                 + "name: trim-test\n"

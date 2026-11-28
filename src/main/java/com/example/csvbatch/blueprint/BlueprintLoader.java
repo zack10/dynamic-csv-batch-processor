@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -86,8 +87,7 @@ public class BlueprintLoader {
             if (property.valueMap() != null) {
                 property.valueMap().values().forEach(limits::property);
             } else if (property.source().constant() != null) {
-                String constant = Boolean.TRUE.equals(property.source().trim())
-                    ? Blueprint.trimSourceValue(property.source().constant()) : property.source().constant();
+                String constant = transformedConstant(property);
                 require(!constant.isEmpty(), "Property constant is empty after trimming");
                 limits.property(constant);
             } else {
@@ -133,6 +133,24 @@ public class BlueprintLoader {
         if (value.transforms() != null) {
             require(List.of("trim", "uppercase", "lowercase").containsAll(value.transforms()), "Unknown transformation");
         }
+    }
+
+    private static String transformedConstant(Blueprint.Value value) {
+        String constant = value.source().constant();
+        if (Boolean.TRUE.equals(value.source().trim())) {
+            constant = Blueprint.trimSourceValue(constant);
+        }
+        if (value.transforms() != null) {
+            for (String transform : value.transforms()) {
+                constant = switch (transform) {
+                    case "trim" -> constant.strip();
+                    case "uppercase" -> constant.toUpperCase(Locale.ROOT);
+                    case "lowercase" -> constant.toLowerCase(Locale.ROOT);
+                    default -> throw new IllegalArgumentException("Unknown transformation");
+                };
+            }
+        }
+        return constant;
     }
 
     static void require(boolean condition, String message) {
