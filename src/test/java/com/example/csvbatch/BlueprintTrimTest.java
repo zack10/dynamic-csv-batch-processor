@@ -2,7 +2,9 @@ package com.example.csvbatch;
 
 import com.example.csvbatch.blueprint.BlueprintLoader;
 import com.example.csvbatch.blueprint.MappingPlan;
+import com.example.csvbatch.normalization.SourceCommandReader;
 import org.junit.jupiter.api.Test;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
@@ -85,6 +87,63 @@ class BlueprintTrimTest {
         assertThatThrownBy(() -> plan.apply(new String[]{"101", "\t \t"}, 1))
                 .hasMessageContaining("Source record 1")
                 .hasMessageContaining("mapping replace");
+    }
+
+    @Test
+    void trimsQuotedValueThroughCsvReader() throws Exception {
+        Path blueprintPath = temp.resolve("quoted.yaml");
+        Path csvPath = temp.resolve("quoted.csv");
+        Files.writeString(blueprintPath, blueprint("{column: old, trim: true}", "{column: replacement}", "{constant: customerId}"));
+        Files.writeString(csvPath, "old,replacement\n\" 101 \",900\n");
+
+        var blueprint = new BlueprintLoader(config(temp)).load(blueprintPath);
+        // Exercise the mapping plan explicitly as well as the real CSV reader below.
+        assertThat(new MappingPlan(blueprint, new String[]{"old", "replacement"}, config(temp))
+                .apply(new String[]{" 101 ", "900"}, 1).getFirst().oldIdValues()).containsExactly("101");
+        var reader = new SourceCommandReader(csvPath, blueprint, config(temp));
+        reader.open(new ExecutionContext());
+        try {
+            assertThat(reader.read().getFirst().oldIdValues()).containsExactly("101");
+        } finally {
+            reader.close();
+        }
+    }
+
+    @Test
+    void preservesExistingEmptyValuesForDropEmpty() throws Exception {
+        Path path = temp.resolve("drop-empty.yaml");
+        Files.writeString(path, blueprint("{columns: [old, other], trim: true}", "{constant: 900}", "{constant: customerId}")
+                .replace("      source: {columns: [old, other], trim: true}\n    newIdValue:",
+                        "      source: {columns: [old, other], trim: true}\n      dropEmpty: true\n    newIdValue:"));
+        var blueprint = new BlueprintLoader(config(temp)).load(path);
+        var plan = new MappingPlan(blueprint, new String[]{"old", "other"}, config(temp));
+
+        assertThat(plan.apply(new String[]{"101", ""}, 1).getFirst().oldIdValues()).containsExactly("101");
+    }
+
+    @Test
+    void acceptsExplicitTrimFalse() throws Exception {
+        Path path = temp.resolve("false.yaml");
+        Files.writeString(path, blueprint("{column: old, trim: false}", "{column: replacement}", "{constant: customerId}"));
+        new BlueprintLoader(config(temp)).load(path);
+    }
+
+    @Test
+    void trimsPaddedFixedPropertyConstantBeforeValidation() throws Exception {
+        Path path = temp.resolve("property.yaml");
+        Files.writeString(path, blueprint("{column: old}", "{column: replacement}", "{constant: ' customerId ', trim: true}"));
+        new BlueprintLoader(config(temp)).load(path);
+    }
+
+    @Test
+    void preservesValueLevelTrimTransform() throws Exception {
+        Path path = temp.resolve("transform.yaml");
+        Files.writeString(path, blueprint("{column: old}", "{column: replacement}", "{constant: customerId}")
+                .replace("      source: {column: old}\n    newIdValue:",
+                        "      source: {column: old}\n      transforms: [trim]\n    newIdValue:"));
+        var blueprint = new BlueprintLoader(config(temp)).load(path);
+        var plan = new MappingPlan(blueprint, new String[]{"old", "replacement"}, config(temp));
+        assertThat(plan.apply(new String[]{" 101 ", "900"}, 1).getFirst().oldIdValues()).containsExactly("101");
     }
 
     private static String blueprint(String oldSource, String newSource, String propertySource) {

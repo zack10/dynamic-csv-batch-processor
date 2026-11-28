@@ -86,7 +86,10 @@ public class BlueprintLoader {
             if (property.valueMap() != null) {
                 property.valueMap().values().forEach(limits::property);
             } else if (property.source().constant() != null) {
-                limits.property(property.source().constant());
+                String constant = Boolean.TRUE.equals(property.source().trim())
+                    ? Blueprint.trimSourceValue(property.source().constant()) : property.source().constant();
+                require(!constant.isEmpty(), "Property constant is empty after trimming");
+                limits.property(constant);
             } else {
                 throw new IllegalArgumentException("Invalid property source");
             }
@@ -115,7 +118,6 @@ public class BlueprintLoader {
             require(!s.indexes().isEmpty() && s.indexes().size() <= limits.maxColumns()
                 && s.indexes().stream().allMatch(x -> x != null && x >= 0 && x < limits.maxColumns()), "Invalid indexes");
         }
-        require(s.trim() == null || s.trim(), "trim must be a boolean");
         if (value.split() != null) {
             require(list && s.columns() == null && s.indexes() == null, "split requires a single list source");
             require("literal".equals(value.split().mode()) && value.split().delimiter() != null
