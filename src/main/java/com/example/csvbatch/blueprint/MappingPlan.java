@@ -12,7 +12,8 @@ import java.util.regex.Pattern;
  */
 public final class MappingPlan {
     private record Compiled(String name, Function<String[], List<String>> old,
-                            Function<String[], List<String>> next, Function<String[], List<String>> property) {
+                            Function<String[], List<String>> next, Function<String[], List<String>> property,
+                            boolean distinct) {
     }
 
     private final List<Compiled> mappings;
@@ -29,7 +30,8 @@ public final class MappingPlan {
             }
         }
         mappings = blueprint.mappings().stream().map(m -> new Compiled(m.name(),
-                compile(m.oldIdValues(), names, false), compile(m.newIdValue(), names), compile(m.metadataToUpdate(), names))).toList();
+                compile(m.oldIdValues(), names), compile(m.newIdValue(), names), compile(m.metadataToUpdate(), names),
+                Boolean.TRUE.equals(m.oldIdValues().distinct()))).toList();
     }
 
     public List<Command> apply(String[] row, long record) {
@@ -41,9 +43,11 @@ public final class MappingPlan {
                 String next = m.next().apply(row).getFirst();
                 String key = m.property().apply(row).getFirst();
                 validate(old, next, key, limits);
-                var distinct = new HashSet<String>();
-                for (String id : old) {
-                    if (!distinct.add(id)) throw new IllegalArgumentException("Duplicate old ID: " + id);
+                if (!m.distinct()) {
+                    var distinct = new HashSet<String>();
+                    for (String id : old) {
+                        if (!distinct.add(id)) throw new IllegalArgumentException("Duplicate old ID: " + id);
+                    }
                 }
                 result.add(new Command(record, i, m.name(), old, next, key));
             } catch (RuntimeException ex) {

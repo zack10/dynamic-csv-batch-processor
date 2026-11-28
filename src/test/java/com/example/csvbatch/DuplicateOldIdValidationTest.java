@@ -62,7 +62,13 @@ class DuplicateOldIdValidationTest {
     }
 
     @Test
-    void whitespaceDifferencesBecomeDuplicateWithTrim() throws Exception {
+    void distinctRemovesWhitespaceDuplicatesAfterTrim() throws Exception {
+        var execution = submitWhitespaceCase(List.of("trim"), "trimmed-distinct");
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+    }
+
+    @Test
+    void trimMakesWhitespaceDuplicatesFailWithoutDistinct() throws Exception {
         var execution = submitWhitespaceCase(List.of("trim"), "trimmed");
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
         var plan = whitespacePlan(List.of("trim"));
@@ -76,8 +82,10 @@ class DuplicateOldIdValidationTest {
         String id = "whitespace-" + suffix + "-" + UUID.randomUUID();
         Path dir = Path.of("target", id);
         Files.createDirectories(dir);
-        Files.writeString(dir.resolve("input.csv"), "old,old2,replacement\\n101, 101,900\\n");
-        Files.writeString(dir.resolve("blueprint.yaml"), whitespaceYaml(transforms));
+        Files.writeString(dir.resolve("input.csv"), "old,old2,replacement\n101, 101,900\n");
+        String yaml = whitespaceYaml(transforms);
+        if (suffix.equals("trimmed")) yaml = yaml.replace("distinct: true", "");
+        Files.writeString(dir.resolve("blueprint.yaml"), yaml);
         return submissions.submit(id, dir.resolve("input.csv"), dir.resolve("blueprint.yaml"), "apply", false);
     }
 
@@ -128,14 +136,18 @@ class DuplicateOldIdValidationTest {
     @Test
     void duplicateOldIdsFailBeforeStagingAndUpdates() throws Exception {
         String id = "duplicate-" + UUID.randomUUID();
-        Path input = Path.of("target", id + ".csv");
-        Files.writeString(input, "old_codes,replacement\n101|101,900\n");
+        Path dir = Path.of("target", id);
+        Files.createDirectories(dir);
+        Path input = dir.resolve("input.csv");
+        Path blueprint = dir.resolve("blueprint.yaml");
+        Files.writeString(input, "old,old2,replacement\n101,101,900\n");
+        Files.writeString(blueprint, whitespaceYaml(List.of()).replace("distinct: true", ""));
 
-        var execution = submissions.submit(id, input, Path.of("examples/split-list.yaml"), "apply", false);
+        var execution = submissions.submit(id, input, blueprint, "apply", false);
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
         String report = Files.readString(Path.of("target/integration-work", id, "report.json"));
-        assertThat(report).contains("Source record 1", "mapping replace-customer", "Duplicate old ID: 101");
+        assertThat(report).contains("Source record 1", "mapping whitespace", "Duplicate old ID: 101");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM staged_command WHERE submission_id=?", Long.class, id)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM staged_pair WHERE submission_id=?", Long.class, id)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM business_record WHERE customer_id='101'", Long.class)).isEqualTo(1);
