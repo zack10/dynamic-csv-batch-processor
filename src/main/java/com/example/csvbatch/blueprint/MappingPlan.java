@@ -90,6 +90,16 @@ public final class MappingPlan {
                 }
                 values.add(row[index]);
             }
+            if (Boolean.TRUE.equals(source.trim())) {
+                for (int i = 0; i < values.size(); i++) {
+                    String original = values.get(i);
+                    String trimmed = Blueprint.trimSourceValue(original);
+                    if (!original.isEmpty() && trimmed.isEmpty()) {
+                        throw new IllegalArgumentException("Source value is empty after trimming");
+                    }
+                    values.set(i, trimmed);
+                }
+            }
             if (split != null) values = new ArrayList<>(Arrays.asList(split.split(values.getFirst(), -1)));
             for (String transform : transforms) {
                 values.replaceAll(s -> switch (transform) {

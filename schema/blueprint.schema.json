@@ -38,19 +38,22 @@
   },
   "$defs": {
     "scalarSource": {
-      "type": "object", "additionalProperties": false, "minProperties": 1, "maxProperties": 1,
-      "properties": {
-        "column": {"type": "string", "minLength": 1},
-        "index": {"type": "integer", "minimum": 0, "maximum": 127},
-        "constant": {"type": "string"}
-      }
-    },
-    "listSource": {
-      "type": "object", "additionalProperties": false, "minProperties": 1, "maxProperties": 1,
+      "type": "object", "additionalProperties": false, "minProperties": 1, "maxProperties": 2,
       "properties": {
         "column": {"type": "string", "minLength": 1},
         "index": {"type": "integer", "minimum": 0, "maximum": 127},
         "constant": {"type": "string"},
+        "trim": {"type": "boolean", "description": "Remove leading and trailing spaces and tabs before mapping"}
+      }
+    },
+    "propertySource": {"$ref": "#/$defs/scalarSource"},
+    "listSource": {
+      "type": "object", "additionalProperties": false, "minProperties": 1, "maxProperties": 2,
+      "properties": {
+        "column": {"type": "string", "minLength": 1},
+        "index": {"type": "integer", "minimum": 0, "maximum": 127},
+        "constant": {"type": "string"},
+        "trim": {"type": "boolean", "description": "Remove leading and trailing spaces and tabs before mapping"},
         "columns": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"type": "string", "minLength": 1}},
         "indexes": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"type": "integer", "minimum": 0, "maximum": 127}}
       }
